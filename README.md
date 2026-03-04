@@ -1,14 +1,15 @@
 # Reference-Guided Data Curation for 3D Medical Vision-Language Pretraining
 
-This repository contains the data curation pipeline described in:
+<p align="center">
+  <img src="assets/method_rrf.png" width="60%" alt="Reference-guided curation pipeline: embedding generation, alignment, and RRF." />
+</p>
 
-> **Reference-Guided Data Curation for 3D Medical Vision-Language Pretraining**  
-> MICCAI 2025
+This repository contains the data curation pipeline described in the paper "Reference-Guided Data Curation for 3D Medical Vision-Language Pretraining".
 
 The pipeline filters a large, uncurated pool of medical scan–report pairs
-(D₀) by measuring their alignment with a small, high-quality reference set
+(D₀) by aligning them to a small, high-quality reference set
 (D_ref), producing a curated subset D_C ⊆ D₀ that maximises downstream
-vision-language pretraining performance.
+vision-language model performance.
 
 ---
 
@@ -63,13 +64,10 @@ scan–report pair (no reference set required).
 ## Installation
 
 ```bash
-git clone https://github.com/YOUR_USERNAME/rg-curation-medical-vlm.git
+git clone https://github.com/faidrapts/rg-curation-medical-vlm.git
 cd rg-curation-medical-vlm
 pip install -r requirements.txt
 ```
-
-**Hardware:** A single GPU with ≥16 GB VRAM is recommended for embedding
-generation.  All scripts fall back to CPU automatically.
 
 ---
 
@@ -111,8 +109,6 @@ python scripts/generate_dreamsim_embeddings.py \
 CT volumes are preprocessed with the fixed `transforms_image` pipeline defined in
 `rg_curation/utils/monai_transforms.py` (RAS orientation, 1.5 × 1.5 × 3 mm spacing,
 HU clipped to [−1000, 1000] → [0, 1], padded/cropped to 224 × 224 × 160).
-Slice extraction defaults to 10 center slices with spacing 2 and crop ratio 0.85
-(adjustable via CLI flags).
 
 **DreamSim embeddings (CXR)**
 
@@ -287,8 +283,9 @@ rg-curation-medical-vlm/
 If you use this code in your research, please cite:
 
 ```bibtex
-@inproceedings{patsatzi2026rgcuration,
+@inproceedings{patsatzi2026rgcurationvlm,
   title     = {Reference-Guided Data Curation for 3D Medical Vision-Language Pretraining},
+  url       = {https://github.com/faidrapts/rg-curation-medical-vlm},
   year      = {2026},
 }
 ```
