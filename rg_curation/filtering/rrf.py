@@ -1,24 +1,5 @@
 """
 Reciprocal Rank Fusion (RRF) for combining vision and text alignment scores.
-
-Given two independently-scored CSVs (e.g. one from vision-only alignment and
-one from text-only alignment), this module computes the standard RRF score:
-
-    Score_RRF(x) = w1 / (η + r_V(x))  +  w2 / (η + r_T(x))
-
-where r_V(x) and r_T(x) are the ranks of sample *x* in the vision and text
-lists (rank 1 = highest score), η is a smoothing constant (default 60), and
-w1, w2 are optional per-modality weights (default 1.0 each).
-
-Samples that appear in only one list receive a contribution of 0 from the
-missing modality (equivalent to an infinite rank penalty).
-
-Reference
----------
-Cormack, G. V., Clarke, C. L., & Buettcher, S. (2009).  Reciprocal rank
-fusion outperforms condorcet and individual rank learning methods.
-Proceedings of the 32nd International ACM SIGIR Conference on Research and
-Development in Information Retrieval.
 """
 
 from __future__ import annotations
@@ -151,8 +132,7 @@ def find_similarity_column(df: pd.DataFrame, label: str = "") -> Optional[str]:
     """
     cols = [c for c in df.columns if "similarity_score" in c.lower()]
     if not cols:
-        logger.error(f"No similarity_score column found{' in ' + label if label else ''}")
-        return None
+        raise ValueError(f"No similarity_score column found{' in ' + label if label else ''}")
     if len(cols) > 1:
-        logger.warning(f"Multiple similarity columns in {label}: {cols}. Using {cols[0]}")
+        raise ValueError(f"Multiple similarity columns in {label}: {cols}. Using {cols[0]}")
     return cols[0]

@@ -21,7 +21,7 @@ Three alignment strategies are supported:
     Concatenates per-slice DreamSim embeddings with the (broadcast)
     Longformer embedding, then applies slice-aligned cosine similarity on
     the joint representation.  Each modality is L2-normalised before
-    concatenation to ensure equal contribution.
+    concatenation.
 """
 
 from __future__ import annotations
@@ -49,9 +49,6 @@ def load_dreamsim_embedding(
 ) -> Optional[np.ndarray]:
     """Load DreamSim slice embeddings for *sample_id* from *embeddings_dir*.
 
-    The .pt file is expected to contain a list of dicts, each with an
-    ``"embedding"`` key (as saved by the generation script).
-
     Args:
         sample_id: Unique sample identifier (used as the filename stem).
         embeddings_dir: Directory containing ``{sample_id}.pt`` files.
@@ -62,14 +59,13 @@ def load_dreamsim_embedding(
     """
     pt_path = os.path.join(embeddings_dir, f"{sample_id}.pt")
     if not os.path.exists(pt_path):
-        return None
+        raise Exception(f"Could not find DreamSim embedding for {sample_id}: {pt_path}")
     try:
         data = torch.load(pt_path, map_location="cpu")
         embs = np.array([entry["embedding"].numpy() for entry in data], dtype=np.float32)
         return embs
     except Exception as exc:
-        logger.warning(f"Could not load DreamSim embedding for {sample_id}: {exc}")
-        return None
+        raise Exception(f"Could not load DreamSim embedding for {sample_id}: {exc}")
 
 
 def load_text_embedding(
@@ -90,13 +86,12 @@ def load_text_embedding(
     """
     pt_path = os.path.join(embeddings_dir, f"{sample_id}.pt")
     if not os.path.exists(pt_path):
-        return None
+        raise Exception(f"Could not find text embedding for {sample_id}: {pt_path}")
     try:
         data = torch.load(pt_path, map_location="cpu")
         return data["embedding"].numpy().astype(np.float32)
     except Exception as exc:
-        logger.warning(f"Could not load text embedding for {sample_id}: {exc}")
-        return None
+        raise Exception(f"Could not load text embedding for {sample_id}: {exc}")
 
 
 # ---------------------------------------------------------------------------
@@ -309,24 +304,12 @@ def run_knn_alignment(
         if use_vision and use_text:
             v_emb = load_dreamsim_embedding(sid, pool_vision_dir)
             t_emb = load_text_embedding(sid, pool_text_dir)
-            if v_emb is None:
-                missing_vision += 1
-                continue
-            if t_emb is None:
-                missing_text += 1
-                continue
             emb = normalize_embeddings(build_early_fusion_embedding(v_emb, t_emb))
         elif use_vision:
             v_emb = load_dreamsim_embedding(sid, pool_vision_dir)
-            if v_emb is None:
-                missing_vision += 1
-                continue
             emb = normalize_embeddings(v_emb)
         else:  # text only
             t_emb = load_text_embedding(sid, pool_text_dir)
-            if t_emb is None:
-                missing_text += 1
-                continue
             emb = normalize_embeddings(t_emb)
 
         pool_emb_cache[sid] = emb
@@ -334,7 +317,6 @@ def run_knn_alignment(
     valid_pool_ids = [s for s in pool_ids if s in pool_emb_cache]
     logger.info(
         f"Pool embeddings loaded: {len(pool_emb_cache)} / {len(pool_ids)} "
-        f"(missing vision: {missing_vision}, missing text: {missing_text})"
     )
 
     # For text-only we stack all embeddings into a matrix for efficient batch
@@ -357,21 +339,12 @@ def run_knn_alignment(
         if use_vision and use_text:
             v_emb = load_dreamsim_embedding(ref_id, vision_embeddings_dir)
             t_emb = load_text_embedding(ref_id, text_embeddings_dir)
-            if v_emb is None or t_emb is None:
-                skipped_ref += 1
-                continue
             ref_emb = normalize_embeddings(build_early_fusion_embedding(v_emb, t_emb))
         elif use_vision:
             v_emb = load_dreamsim_embedding(ref_id, vision_embeddings_dir)
-            if v_emb is None:
-                skipped_ref += 1
-                continue
             ref_emb = normalize_embeddings(v_emb)
         else:
             t_emb = load_text_embedding(ref_id, text_embeddings_dir)
-            if t_emb is None:
-                skipped_ref += 1
-                continue
             ref_emb = normalize_embeddings(t_emb)
 
         try:
@@ -384,8 +357,7 @@ def run_knn_alignment(
                 )
                 nn_ids = [valid_pool_ids[i] for i in nn_indices]
         except Exception as exc:
-            logger.error(f"kNN failed for reference sample {ref_id}: {exc}")
-            continue
+            raise Exception(f"kNN failed for reference sample {ref_id}: {exc}")
 
         for rank, (pool_sample_id, sim) in enumerate(zip(nn_ids, nn_sims)):
             aligned_records.append(
@@ -396,11 +368,6 @@ def run_knn_alignment(
                     "neighbor_rank": rank + 1,
                 }
             )
-
-    if skipped_ref:
-        logger.warning(
-            f"Skipped {skipped_ref} reference samples (missing embeddings)"
-        )
 
     if not aligned_records:
         logger.error("No aligned records produced.")
