@@ -2,8 +2,7 @@
 Clinical Longformer text embedding generation.
 
 Uses the `yikuan8/Clinical-Longformer` model to encode radiology report
-findings sections.  The CLS token representation is L2-normalised before
-being returned, consistent with contrastive learning conventions.
+findings sections.
 """
 
 from __future__ import annotations
@@ -21,8 +20,6 @@ _MAX_TOKENS = 4096
 
 def setup_longformer_model() -> Tuple:
     """Load the Clinical Longformer tokenizer and model.
-
-    The model is moved to GPU if available, otherwise CPU.
 
     Returns:
         Tuple of ``(model, tokenizer, device)``.
@@ -65,7 +62,7 @@ def compute_longformer_embedding(
     from rg_curation.utils.text_utils import truncate_text
     # Only use truncate_text for None/NaN handling; the tokenizer enforces
     # the actual 4096-token limit via truncation=True.
-    text = truncate_text(text, max_tokens=4096)
+    # text = truncate_text(text, max_tokens=4096)
 
     with torch.no_grad():
         tokens = tokenizer(
